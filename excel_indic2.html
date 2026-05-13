@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>Santé Dashboard - Indicateurs avec Barre latérale</title>
+    <!-- Chart.js CDN pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- SheetJS (XLSX) pour lire le fichier Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: linear-gradient(135deg, #eef2f7 0%, #d4e0e9 100%);
+        font-family: "Segoe UI", "Poppins", Roboto, system-ui, sans-serif;
+        height: 100vh;
+        overflow: hidden;
+      }
+      /* Layout principal: zone centrale + sidebar droite */
+
+      .app-layout {
+        display: flex;
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+      }
+      /* Contenu principal (scrollable) */
+
+      .main-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.8rem 2rem 2rem 2rem;
+        scroll-behavior: smooth;
+      }
+      /* Sidebar verticale à droite */
+
+      .right-sidebar {
+        width: 320px;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        border-left: 1px solid rgba(60, 80, 70, 0.15);
+        box-shadow: -8px 0 25px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        z-index: 10;
+        transition: all 0.2s;
+      }
+      /* En-tête sidebar */
+
+      .sidebar-header {
+        padding: 1.8rem 1.2rem 1rem 1.5rem;
+        border-bottom: 2px solid #cfe3db;
+      }
+
+      .sidebar-header h3 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        background: linear-gradient(120deg, #1f5e3a, #2a7f53);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sidebar-header p {
+        font-size: 0.75rem;
+        color: #527a66;
+        margin-top: 6px;
+      }
+      /* Zone d'import dans sidebar */
+
+      .import-area {
+        padding: 1.2rem 1.2rem 0.8rem 1.5rem;
+        border-bottom: 1px solid #e2ede7;
+      }
+
+      .file-label {
+        background: #2c6e49;
+        color: white;
+        padding: 0.55rem 1rem;
+        border-radius: 40px;
+        font-weight: 500;
+        font-size: 0.8rem;
+        cursor: pointer;
+        text-align: center;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: 0.2s;
+        width: 100%;
+        justify-content: center;
+        border: none;
+        margin-bottom: 8px;
+      }
+
+      .file-label:hover {
+        background: #1e543c;
+        transform: scale(0.97);
+      }
+
+      #fileInput {
+        display: none;
+      }
+
+      .sample-btn {
+        background: #3f7b62;
+        width: 100%;
+        margin-bottom: 12px;
+      }
+
+      .file-status-badge {
+        font-size: 0.7rem;
+        background: #eaf3ef;
+        padding: 6px 10px;
+        border-radius: 60px;
+        text-align: center;
+        color: #245e45;
+        margin-top: 6px;
+      }
+      /* Liste des formations (scrollable) */
+
+      .facility-list {
+        flex: 1;
+        padding: 1rem 0.5rem 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        overflow-y: auto;
+      }
+
+      .facility-item {
+        background: #ffffffcc;
+        backdrop-filter: blur(2px);
+        border-radius: 1.5rem;
+        padding: 0.9rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #cde2d8;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      }
+
+      .facility-item:hover {
+        background: white;
+        border-color: #7cae93;
+        transform: translateX(-3px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+      }
+
+      .facility-item.active {
+        background: #e3f5ec;
+        border-left: 6px solid #2c8c5a;
+        border-radius: 1.5rem 1rem 1rem 1.5rem;
+        font-weight: 600;
+        background: #ffffff;
+        box-shadow: 0 5px 12px rgba(44, 140, 90, 0.12);
+      }
+
+      .facility-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1e3e32;
+      }
+
+      .facility-stats {
+        font-size: 0.7rem;
+        background: #eef3f0;
+        padding: 0.2rem 0.6rem;
+        border-radius: 40px;
+        color: #1f6746;
+        font-weight: 500;
+      }
+      /* Header dashboard */
+
+      .dashboard-header {
+        margin-bottom: 2rem;
+      }
+
+      .dashboard-header h1 {
+        font-size: 1.7rem;
+        font-weight: 700;
+        background: linear-gradient(145deg, #1b5e3f, #2c8c5a);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        letter-spacing: -0.3px;
+      }
+
+      .sub {
+        color: #476b5c;
+        font-size: 0.85rem;
+        margin-top: 6px;
+      }
+      /* Grille cadrans + graphique */
+
+      .metrics-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        justify-content: flex-start;
+      }
+
+      .gauge-card {
+        flex: 1;
+        min-width: 250px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        border-radius: 2rem;
+        padding: 1.2rem 1rem 1.6rem;
+        text-align: center;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+      }
+
+      .gauge-card:hover {
+        transform: translateY(-5px);
+        background: white;
+      }
+
+      .gauge-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1f4d3e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+      }
+
+      .canvas-wrapper {
+        position: relative;
+        margin: 0 auto;
+        width: 180px;
+        height: 180px;
+      }
+
+      canvas.gauge-canvas {
+        max-width: 100%;
+        height: auto;
+      }
+
+      .gauge-value {
+        margin-top: 0.6rem;
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1b4d3b;
+      }
+
+      .gauge-unit {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #5f7f6e;
+      }
+
+      .chart-card {
+        flex: 1.2;
+        min-width: 300px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(8px);
+        border-radius: 2rem;
+        padding: 1.2rem 1rem;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      .chart-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        color: #245f48;
+        padding-left: 0.3rem;
+      }
+
+      .bar-container {
+        position: relative;
+        height: 250px;
+      }
+
+      .footer-info {
+        text-align: center;
+        margin-top: 1.8rem;
+        font-size: 0.7rem;
+        background: #eef3efc9;
+        width: fit-content;
+        padding: 0.4rem 1.2rem;
+        border-radius: 60px;
+        color: #2c6a4f;
+      }
+      /* scroll personnalisé */
+
+      .right-sidebar::-webkit-scrollbar {
+        width: 5px;
+      }
+
+      .right-sidebar::-webkit-scrollbar-track {
+        background: #e0ece5;
+      }
+
+      .right-sidebar::-webkit-scrollbar-thumb {
+        background: #8cb3a1;
+        border-radius: 10px;
+      }
+
+      @media (max-width: 860px) {
+        .right-sidebar {
+          width: 270px;
+        }
+        .main-content {
+          padding: 1rem;
+        }
+        .gauge-card,
+        .chart-card {
+          min-width: 220px;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .app-layout {
+          flex-direction: column-reverse;
+        }
+        .right-sidebar {
+          width: 100%;
+          height: auto;
+          max-height: 40%;
+          border-left: none;
+          border-top: 1px solid #cbdcd2;
+        }
+        .main-content {
+          height: 60%;
+          overflow-y: auto;
+        }
+        .facility-list {
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 0.8rem;
+        }
+        .facility-item {
+          width: calc(50% - 8px);
+        }
+        .sidebar-header {
+          padding: 0.8rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <!-- CONTENU PRINCIPAL (GAUCHE) -->
+      <div class="main-content">
+        <div class="dashboard-header">
+          <h1>🏥 Indicateurs Santé Maternelle & BCG</h1>
+          <div class="sub">
+            Taux d'accouchement & couverture vaccinale — Visualisation dynamique
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <!-- Cadran Taux d'accouchement -->
+          <div class="gauge-card">
+            <div class="gauge-title"><span>🤱</span> Accouchements</div>
+            <div class="canvas-wrapper">
+              <canvas
+                id="gaugeDelivery"
+                width="180"
+                height="180"
+                class="gauge-canvas"
+              ></canvas>
+            </div>
+            <div class="gauge-value" id="deliveryValue">
+              — <span class="gauge-unit">%</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #5d7a6b">
+              Taux d'accouchement institutionnel
+            </div>
+          </div>
+
+          <!-- Cadran Couverture BCG -->
+          <div class="gauge-card">
+            <div class="gauge-title"><span>💉</span> Vaccination BCG</div>
+            <div class="canvas-wrapper">
+              <canvas
+                id="gaugeBCG"
+                width="180"
+                height="180"
+                class="gauge-canvas"
+              ></canvas>
+            </div>
+            <div class="gauge-value" id="bcgValue">
+              — <span class="gauge-unit">%</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #5d7a6b">
+              Couverture vaccinale BCG
+            </div>
+          </div>
+
+          <!-- Graphique à barres comparatif -->
+          <div class="chart-card">
+            <div class="chart-title">📊 Comparaison des indicateurs</div>
+            <div class="bar-container">
+              <canvas
+                id="comparisonChart"
+                width="400"
+                height="230"
+                style="max-height: 230px; width: 100%"
+              ></canvas>
+            </div>
+            <div
+              style="font-size: 0.65rem; text-align: center; margin-top: 0.4rem"
+            >
+              Taux pour la formation sélectionnée
+            </div>
+          </div>
+        </div>
+        <div class="footer-info">
+          ✨ Données issues du fichier Excel (Colonne A: Formation, B: Taux
+          accouchement, C: Taux BCG) — cliquez sur un établissement dans la
+          barre de droite
+        </div>
+      </div>
+
+      <!-- SIDEBAR VERTICALE DROITE : sélection & import -->
+      <div class="right-sidebar">
+        <div class="sidebar-header">
+          <h3>📋 <span>Formations sanitaires</span></h3>
+          <p>Sélectionner un établissement</p>
+        </div>
+        <div class="import-area">
+          <label class="file-label" for="fileInput">
+            📂 Importer Excel (.xlsx, .xls)
+          </label>
+          <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" />
+          <button
+            id="loadSampleBtn"
+            class="file-label sample-btn"
+            style="background: #3f7b62"
+          >
+            📋 Charger données exemple
+          </button>
+          <div class="file-status-badge" id="fileStatus">
+            Aucune donnée. Exemple intégré.
+          </div>
+        </div>
+        <div class="facility-list" id="facilityListContainer">
+          <!-- Dynamique liste des formations -->
+          <div style="padding: 1rem; text-align: center; color: #6b8c7a">
+            Chargement...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ----- Données & variables globales -----
+      let dataset = []; // { name, deliveryRate, bcgRate }
+      let deliveryGaugeChart = null;
+      let bcgGaugeChart = null;
+      let barChart = null;
+      let currentSelectedFacility = "";
+
+      // Références DOM
+      const facilityListDiv = document.getElementById("facilityListContainer");
+      const deliveryValueSpan = document.getElementById("deliveryValue");
+      const bcgValueSpan = document.getElementById("bcgValue");
+      const fileInput = document.getElementById("fileInput");
+      const fileStatusSpan = document.getElementById("fileStatus");
+      const loadSampleBtn = document.getElementById("loadSampleBtn");
+
+      // ---- Fonctions graphiques ----
+      function createGaugeChart(canvasId, initialPercent, colorMain, colorBg) {
+        const ctx = document.getElementById(canvasId).getContext("2d");
+        let existingChart =
+          canvasId === "gaugeDelivery" ? deliveryGaugeChart : bcgGaugeChart;
+        if (existingChart) {
+          existingChart.destroy();
+        }
+        const percent = Math.min(100, Math.max(0, initialPercent));
+        const data = {
+          datasets: [
+            {
+              data: [percent, 100 - percent],
+              backgroundColor: [colorMain, colorBg],
+              borderWidth: 0,
+              circumference: 360,
+              rotation: -90,
+              cutout: "72%",
+              borderRadius: 10,
+              hoverOffset: 5,
+            },
+          ],
+        };
+        const options = {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            tooltip: {
+              enabled: false,
+            },
+            legend: {
+              display: false,
+            },
+          },
+        };
+        const chart = new Chart(ctx, {
+          type: "doughnut",
+          data: data,
+          options: options,
+        });
+        if (canvasId === "gaugeDelivery") deliveryGaugeChart = chart;
+        else bcgGaugeChart = chart;
+        return chart;
+      }
+
+      function updateGauges(deliveryPercent, bcgPercent) {
+        const delivery =
+          deliveryPercent !== null && !isNaN(deliveryPercent)
+            ? deliveryPercent
+            : 0;
+        const bcg = bcgPercent !== null && !isNaN(bcgPercent) ? bcgPercent : 0;
+        createGaugeChart("gaugeDelivery", delivery, "#2c8c5a", "#e2ece6");
+        createGaugeChart("gaugeBCG", bcg, "#3b82b6", "#e2eaf1");
+        deliveryValueSpan.innerHTML =
+          deliveryPercent !== null && !isNaN(deliveryPercent)
+            ? deliveryPercent.toFixed(1) + '<span class="gauge-unit"> %</span>'
+            : '— <span class="gauge-unit">%</span>';
+        bcgValueSpan.innerHTML =
+          bcgPercent !== null && !isNaN(bcgPercent)
+            ? bcgPercent.toFixed(1) + '<span class="gauge-unit"> %</span>'
+            : '— <span class="gauge-unit">%</span>';
+      }
+
+      function updateBarChart(delivery, bcg, facilityName) {
+        if (barChart) barChart.destroy();
+        const ctx = document.getElementById("comparisonChart").getContext("2d");
+        barChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Taux accouchement (%)", "Couverture BCG (%)"],
+            datasets: [
+              {
+                label: facilityName || "Formation",
+                data: [delivery, bcg],
+                backgroundColor: ["#2c8c5a", "#3b82b6"],
+                borderRadius: 12,
+                barPercentage: 0.6,
+                categoryPercentage: 0.7,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: "top",
+                labels: {
+                  font: {
+                    size: 11,
+                  },
+                },
+              },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.raw}%`,
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: "Pourcentage (%)",
+                  font: {
+                    size: 9,
+                  },
+                },
+                grid: {
+                  color: "#d4e0da",
+                },
+              },
+              x: {
+                ticks: {
+                  font: {
+                    size: 10,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Mise à jour complète dashboard + sidebar highlight
+      function refreshDashboardByFacility(facilityName) {
+        if (!dataset.length) {
+          updateGauges(null, null);
+          updateBarChart(0, 0, "Aucune donnée");
+          return;
+        }
+        const found = dataset.find((item) => item.name === facilityName);
+        if (found) {
+          const deliveryVal = Math.min(
+            100,
+            Math.max(0, parseFloat(found.deliveryRate)),
+          );
+          const bcgVal = Math.min(100, Math.max(0, parseFloat(found.bcgRate)));
+          updateGauges(deliveryVal, bcgVal);
+          updateBarChart(deliveryVal, bcgVal, found.name);
+          currentSelectedFacility = found.name;
+          highlightActiveFacilityInSidebar(currentSelectedFacility);
+        } else if (dataset.length > 0) {
+          // fallback sur premier
+          const first = dataset[0];
+          refreshDashboardByFacility(first.name);
+        } else {
+          updateGauges(null, null);
+        }
+      }
+
+      // Highlight dans la sidebar
+      function highlightActiveFacilityInSidebar(activeName) {
+        const allItems = document.querySelectorAll(".facility-item");
+        allItems.forEach((item) => {
+          if (item.getAttribute("data-facility") === activeName) {
+            item.classList.add("active");
+          } else {
+            item.classList.remove("active");
+          }
+        });
+      }
+
+      // Remplir la liste verticale (droite)
+      function renderFacilityList() {
+        if (!dataset.length) {
+          facilityListDiv.innerHTML = `<div style="padding:1rem; text-align:center; color:#8aa99b;">📭 Aucune formation importée<br>Chargez un fichier Excel ou exemple</div>`;
+          return;
+        }
+        let html = "";
+        dataset.forEach((fac) => {
+          const deliveryVal =
+            typeof fac.deliveryRate === "number"
+              ? fac.deliveryRate.toFixed(1)
+              : fac.deliveryRate;
+          const bcgVal =
+            typeof fac.bcgRate === "number"
+              ? fac.bcgRate.toFixed(1)
+              : fac.bcgRate;
+          html += `
+                <div class="facility-item" data-facility="${escapeHtml(fac.name)}" data-name="${escapeHtml(fac.name)}">
+                    <div class="facility-name">${escapeHtml(fac.name)}</div>
+                    <div class="facility-stats">🤱${deliveryVal}%  💉${bcgVal}%</div>
+                </div>
+            `;
+        });
+        facilityListDiv.innerHTML = html;
+        // Attacher événements click
+        document.querySelectorAll(".facility-item").forEach((el) => {
+          el.addEventListener("click", (e) => {
+            const facName = el.getAttribute("data-facility");
+            if (facName) {
+              refreshDashboardByFacility(facName);
+            }
+          });
+        });
+        // mettre en surbrillance l'actif si existant
+        if (currentSelectedFacility)
+          highlightActiveFacilityInSidebar(currentSelectedFacility);
+        else if (dataset.length)
+          highlightActiveFacilityInSidebar(dataset[0].name);
+      }
+
+      // Petit utilitaire anti-XSS
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/[&<>]/g, function (m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+          })
+          .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (c) {
+            return c;
+          });
+      }
+
+      // Chargement à partir des données issues du fichier Excel (worksheet)
+      function loadFromSheetData(worksheet) {
+        const rows = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          defval: "",
+        });
+        if (!rows || rows.length < 2) {
+          fileStatusSpan.innerText = "⚠️ Fichier vide ou invalide";
+          return false;
+        }
+        let startRow = 0;
+        if (
+          rows.length > 0 &&
+          rows[0][0] &&
+          typeof rows[0][0] === "string" &&
+          (rows[0][0].toLowerCase().includes("formation") ||
+            rows[0][0].toLowerCase().includes("nom") ||
+            rows[0][0].toLowerCase().includes("établissement"))
+        ) {
+          startRow = 1;
+        }
+        let newDataset = [];
+        for (let i = startRow; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length < 2) continue;
+          let name = row[0] ? String(row[0]).trim() : "";
+          if (name === "" || name === "null" || name === "undefined") continue;
+          let deliveryRaw = row[1];
+          let bcgRaw = row[2];
+          let delivery = parseFloat(
+            String(deliveryRaw).replace(",", ".").replace(/%/g, ""),
+          );
+          let bcg = parseFloat(
+            String(bcgRaw).replace(",", ".").replace(/%/g, ""),
+          );
+          if (isNaN(delivery)) delivery = 0;
+          if (isNaN(bcg)) bcg = 0;
+          delivery = Math.min(100, Math.max(0, delivery));
+          bcg = Math.min(100, Math.max(0, bcg));
+          newDataset.push({
+            name: name,
+            deliveryRate: delivery,
+            bcgRate: bcg,
+          });
+        }
+        if (newDataset.length === 0) {
+          fileStatusSpan.innerText =
+            "❌ Aucune donnée valide (colonne A: nom, B: taux, C: BCG)";
+          return false;
+        }
+        dataset = newDataset;
+        currentSelectedFacility = dataset[0].name;
+        renderFacilityList();
+        refreshDashboardByFacility(currentSelectedFacility);
+        fileStatusSpan.innerText = `✅ ${dataset.length} formations chargées`;
+        return true;
+      }
+
+      // Gestion fichier Excel
+      function handleExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {
+            type: "array",
+          });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          loadFromSheetData(firstSheet);
+        };
+        reader.onerror = () => {
+          fileStatusSpan.innerText = "Erreur lecture";
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleExcelFile(e.target.files[0]);
+        }
+      });
+
+      // Jeu de données exemple (conforme exigences : formations sanitaires + taux)
+      function loadSampleData() {
+        dataset = [
+          {
+            name: "Centre Médical Aïnou",
+            deliveryRate: 78.4,
+            bcgRate: 92.3,
+          },
+          {
+            name: "Hôpital Régional de Bélier",
+            deliveryRate: 65.2,
+            bcgRate: 85.7,
+          },
+          {
+            name: "Maternité Notre Dame des Grâces",
+            deliveryRate: 88.9,
+            bcgRate: 97.5,
+          },
+          {
+            name: "CSPS Kossyam",
+            deliveryRate: 55.0,
+            bcgRate: 74.2,
+          },
+          {
+            name: "Clinique Espoir et Vie",
+            deliveryRate: 91.2,
+            bcgRate: 96.0,
+          },
+          {
+            name: "District Sanitaire Ziniaré",
+            deliveryRate: 69.5,
+            bcgRate: 81.3,
+          },
+          {
+            name: "Centre de Santé Wango",
+            deliveryRate: 82.1,
+            bcgRate: 88.6,
+          },
+        ];
+        currentSelectedFacility = dataset[0].name;
+        renderFacilityList();
+        refreshDashboardByFacility(currentSelectedFacility);
+        fileStatusSpan.innerText = `📋 Exemple chargé (${dataset.length} formations)`;
+      }
+
+      loadSampleBtn.addEventListener("click", () => {
+        loadSampleData();
+        fileInput.value = "";
+      });
+
+      // initialisation par défaut avec données exemple pour affichage immédiat
+      loadSampleData();
+    </script>
+  </body>
+</html>
