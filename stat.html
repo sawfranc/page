@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
+    <title>Indicateurs Santé : Cadrans & Graphique | F/H par formation</title>
+    <!-- Google Charts & Fonts -->
+    <script
+      type="text/javascript"
+      src="https://www.gstatic.com/charts/loader.js"
+    ></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: linear-gradient(145deg, #eef2f7 0%, #d9e1ec 100%);
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        padding: 2rem 1.5rem;
+        min-height: 100vh;
+      }
+
+      .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      /* en-tête */
+
+      .header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+
+      .header h1 {
+        font-size: 1.9rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #1a3e4c, #2c6e6e);
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        letter-spacing: -0.3px;
+      }
+
+      .header p {
+        color: #2c4b5a;
+        font-weight: 500;
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        opacity: 0.8;
+      }
+      /* grille de cadrans (cards) */
+
+      .gauges-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        justify-content: center;
+        margin-bottom: 3rem;
+      }
+
+      .gauge-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(2px);
+        border-radius: 2rem;
+        padding: 1.2rem 1rem 1.5rem 1rem;
+        box-shadow:
+          0 20px 30px -12px rgba(0, 0, 0, 0.2),
+          0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.25s ease;
+        width: 280px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+
+      .gauge-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 28px 34px -14px rgba(0, 0, 0, 0.25);
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .card-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #174439;
+        background: #f0f4f8;
+        display: inline-block;
+        padding: 0.2rem 1rem;
+        border-radius: 40px;
+        margin-bottom: 1.2rem;
+        letter-spacing: -0.2px;
+        box-shadow:
+          inset 0 1px 0 white,
+          0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      .gauge-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .gauge-chart {
+        width: 100%;
+        height: auto;
+        min-height: 170px;
+      }
+
+      .stats-badge {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 0.8rem;
+        font-weight: 600;
+        background: #eef2f5;
+        padding: 0.5rem 0.8rem;
+        border-radius: 60px;
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .stats-badge span {
+        font-size: 0.9rem;
+      }
+
+      .femme-stat {
+        color: #d25f6b;
+        background: #ffe9ec;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+      }
+
+      .homme-stat {
+        color: #3c7a8c;
+        background: #e1f0f5;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+      }
+      /* zone du graphique en barres */
+
+      .barchart-section {
+        background: white;
+        border-radius: 2rem;
+        padding: 1.8rem 1rem 1rem 1rem;
+        box-shadow: 0 15px 35px -12px rgba(0, 0, 0, 0.2);
+        margin-top: 0.5rem;
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+      }
+
+      .barchart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        padding: 0 0.5rem;
+      }
+
+      .barchart-header h3 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #1a4a4a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .legend {
+        display: flex;
+        gap: 1.2rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+
+      .legend-femme {
+        color: #d25f6b;
+        background: #fef2f4;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+      }
+
+      .legend-homme {
+        color: #3c7a8c;
+        background: #e9f3f7;
+        padding: 0.2rem 0.8rem;
+        border-radius: 30px;
+      }
+
+      #barchart_div {
+        width: 100%;
+        height: 420px;
+        transition: all 0.2s;
+      }
+      /* pied de page */
+
+      .footer-note {
+        text-align: center;
+        margin-top: 2rem;
+        color: #3f5c6b;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background: rgba(255, 255, 240, 0.5);
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0.4rem 1.5rem;
+        border-radius: 60px;
+        backdrop-filter: blur(2px);
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 1.2rem;
+        }
+        .gauge-card {
+          width: 260px;
+        }
+        .card-title {
+          font-size: 1.1rem;
+        }
+        #barchart_div {
+          height: 360px;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .gauges-grid {
+          gap: 1.2rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="dashboard-container">
+      <div class="header">
+        <h1>📊 Indicateurs de santé</h1>
+        <p>
+          Formations sanitaires · Répartition par genre — Cadrans & graphique
+        </p>
+      </div>
+
+      <!-- zone dynamique des cadrans (Google Gauge) -->
+      <div id="gaugesContainer" class="gauges-grid">
+        <!-- les cadrans seront injectés ici avec JS -->
+      </div>
+
+      <!-- section graphique à barres -->
+      <div class="barchart-section">
+        <div class="barchart-header">
+          <h3>📈 Effectifs par formation sanitaire</h3>
+          <div class="legend">
+            <span class="legend-femme">👩‍⚕️ Femmes</span>
+            <span class="legend-homme">👨‍⚕️ Hommes</span>
+          </div>
+        </div>
+        <div id="barchart_div"></div>
+      </div>
+      <div class="footer-note">
+        ⚕️ Données simulées — chaque cadran affiche l'indicateur femmes/hommes |
+        Graphique à barres comparatif
+      </div>
+    </div>
+
+    <script>
+      // Chargement de Google Charts avec packages 'gauge' et 'corechart' (barres)
+      google.charts.load("current", {
+        packages: ["gauge", "corechart"],
+      });
+
+      // ---- DONNÉES EXEMPLE : tableau avec colonnes formation sanitaire, nombre de femmes, nombre d'hommes ----
+      // (vous pouvez modifier facilement ces valeurs)
+      const dataset = [
+        {
+          formation: "Centre de santé A",
+          femmes: 124,
+          hommes: 98,
+        },
+        {
+          formation: "Hôpital régional B",
+          femmes: 287,
+          hommes: 203,
+        },
+        {
+          formation: "Clinique C",
+          femmes: 85,
+          hommes: 112,
+        },
+        {
+          formation: "Dispensaire D",
+          femmes: 42,
+          hommes: 37,
+        },
+        {
+          formation: "Polyclinique E",
+          femmes: 211,
+          hommes: 175,
+        },
+      ];
+
+      // Fonction qui génère et dessine tous les cadrans (gauges) pour chaque formation
+      function drawAllGauges() {
+        const container = document.getElementById("gaugesContainer");
+        if (!container) return;
+
+        // Vider le conteneur tout en préservant la structure
+        container.innerHTML = "";
+
+        // Pour chaque ligne, créer une carte Gauge Google Charts
+        dataset.forEach((item, index) => {
+          const cardId = `gauge_card_${index}`;
+          const gaugeDivId = `gauge_${index}`;
+
+          // Créer la carte HTML
+          const card = document.createElement("div");
+          card.className = "gauge-card";
+          card.innerHTML = `
+        <div class="card-title">${escapeHtml(item.formation)}</div>
+        <div class="gauge-wrapper">
+          <div id="${gaugeDivId}" class="gauge-chart" style="width: 100%; height: 170px;"></div>
+        </div>
+        <div class="stats-badge">
+          <span class="femme-stat">👩 Femmes : ${item.femmes}</span>
+          <span class="homme-stat">👨 Hommes : ${item.hommes}</span>
+        </div>
+      `;
+          container.appendChild(card);
+
+          // Après insertion, dessiner le gauge dans le div créé
+          // On a besoin que le div existe dans le DOM
+          const gaugeData = new google.visualization.DataTable();
+          gaugeData.addColumn("string", "Label");
+          gaugeData.addColumn("number", "Valeur");
+
+          // Pour un cadran "mixte" on veut montrer deux indicateurs ? Mais le gauge standard affiche une seule aiguille.
+          // Objectif: "des indicateurs sur des jolis cadrans" --> On peut faire 2 jauges côte à côte par carte ?
+          // Pour une meilleure lisibilité, je choisis d'afficher DEUX JAUGES mini dans chaque carte (femmes / hommes) ou une jauge avec un rapport ?
+          // Mais le cahier dit "indicateurs sur des jolis cadrans, issus d’un tableau avec 3 colonnes".
+          // On peut afficher deux jauges distinctes par carte (Femmes + Hommes) pour conserver la clarté et la beauté.
+          // Cependant un gauge seul n'est pas idéal pour deux valeurs. Meilleure approche: Pour chaque formation, deux cadrans (petits) ou un indicateur unique.
+          // Je vais créer deux mini-jauges côte à côte dans la carte, plus élégant et lisible pour chaque genre.
+          // Réécrivons la carte dynamique pour avoir deux cadrans (femme / homme) séparés afin de visualiser chaque nombre individuellement.
+          // Cela correspond à "des indicateurs sur des jolis cadrans" pour les deux colonnes.
+        });
+      }
+
+      // Version améliorée: chaque carte contient deux jauges (femmes et hommes) avec leurs propres valeurs maximales.
+      // Cela montre visuellement l'écart et reste très joli.
+      function drawEnhancedGauges() {
+        const container = document.getElementById("gaugesContainer");
+        if (!container) return;
+        container.innerHTML = "";
+
+        // Calculer le maximum global pour homogénéiser l'échelle?
+        // Pour des jauges pertinentes, on fixe une échelle de 0 à 350 (max observé ~287 + marge)
+        // Mais chaque formation peut avoir des max distincts, mais pour la cohérence visuelle, fixons une limite commune maxFemmes et maxHommes.
+        const maxFemales = Math.max(...dataset.map((d) => d.femmes), 10);
+        const maxMales = Math.max(...dataset.map((d) => d.hommes), 10);
+        const globalMax = Math.max(maxFemales, maxMales, 300); // au moins 300 pour conserver confort
+        const gaugeMax = Math.ceil(globalMax * 1.1); // marge agréable (ex: 315)
+
+        dataset.forEach((item, idx) => {
+          const cardId = `gaugecard_${idx}`;
+          const gaugeFemId = `gauge_fem_${idx}`;
+          const gaugeHomId = `gauge_hom_${idx}`;
+
+          const card = document.createElement("div");
+          card.className = "gauge-card";
+          card.style.width = "300px";
+          card.innerHTML = `
+        <div class="card-title">🏥 ${escapeHtml(item.formation)}</div>
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
+          <div style="flex:1; text-align:center;">
+            <div style="font-weight: 600; font-size:0.8rem; background:#FBE9EB; display:inline-block; padding:2px 12px; border-radius:20px; margin-bottom:6px;">👩 Femmes</div>
+            <div id="${gaugeFemId}" style="width: 100%; height: 130px;"></div>
+            <div style="font-weight:700; margin-top:6px; color:#B14D5A;">${item.femmes}</div>
+          </div>
+          <div style="flex:1; text-align:center;">
+            <div style="font-weight: 600; font-size:0.8rem; background:#E1F0F5; display:inline-block; padding:2px 12px; border-radius:20px; margin-bottom:6px;">👨 Hommes</div>
+            <div id="${gaugeHomId}" style="width: 100%; height: 130px;"></div>
+            <div style="font-weight:700; margin-top:6px; color:#2C6E6E;">${item.hommes}</div>
+          </div>
+        </div>
+        <div class="stats-badge" style="margin-top: 12px; gap:1rem;">
+          <span>📊 Total: ${item.femmes + item.hommes}</span>
+        </div>
+      `;
+          container.appendChild(card);
+
+          // Dessiner gauge pour femmes
+          const femData = google.visualization.arrayToDataTable([
+            ["Label", "Valeur"],
+            ["Femmes", item.femmes],
+          ]);
+          const femOptions = {
+            width: 130,
+            height: 130,
+            redFrom: gaugeMax * 0.85,
+            redTo: gaugeMax,
+            yellowFrom: gaugeMax * 0.6,
+            yellowTo: gaugeMax * 0.85,
+            greenFrom: 0,
+            greenTo: gaugeMax * 0.6,
+            minorTicks: 5,
+            max: gaugeMax,
+            min: 0,
+            greenColor: "#6fbf73",
+            yellowColor: "#f9cb6b",
+            redColor: "#e06666",
+            backgroundColor: "#fefefe",
+            majorTicks: [
+              "0",
+              Math.round(gaugeMax * 0.33),
+              Math.round(gaugeMax * 0.66),
+              gaugeMax,
+            ],
+          };
+          const femGauge = new google.visualization.Gauge(
+            document.getElementById(gaugeFemId),
+          );
+          femGauge.draw(femData, femOptions);
+
+          // Dessiner gauge pour hommes
+          const maleData = google.visualization.arrayToDataTable([
+            ["Label", "Valeur"],
+            ["Hommes", item.hommes],
+          ]);
+          const maleOptions = {
+            width: 130,
+            height: 130,
+            redFrom: gaugeMax * 0.85,
+            redTo: gaugeMax,
+            yellowFrom: gaugeMax * 0.6,
+            yellowTo: gaugeMax * 0.85,
+            greenFrom: 0,
+            greenTo: gaugeMax * 0.6,
+            minorTicks: 5,
+            max: gaugeMax,
+            min: 0,
+            greenColor: "#6fbf73",
+            yellowColor: "#f9cb6b",
+            redColor: "#e06666",
+            backgroundColor: "#fefefe",
+            majorTicks: [
+              "0",
+              Math.round(gaugeMax * 0.33),
+              Math.round(gaugeMax * 0.66),
+              gaugeMax,
+            ],
+          };
+          const maleGauge = new google.visualization.Gauge(
+            document.getElementById(gaugeHomId),
+          );
+          maleGauge.draw(maleData, maleOptions);
+        });
+      }
+
+      // Graphique à barres (colonne) avec les mêmes indicateurs (femmes/hommes côte à côte)
+      function drawBarChart() {
+        // Construire DataTable pour bar chart
+        const data = new google.visualization.DataTable();
+        data.addColumn("string", "Formation sanitaire");
+        data.addColumn("number", "Femmes");
+        data.addColumn("number", "Hommes");
+
+        dataset.forEach((item) => {
+          data.addRow([item.formation, item.femmes, item.hommes]);
+        });
+
+        const options = {
+          title: "Comparaison des effectifs par formation",
+          titleTextStyle: {
+            fontSize: 16,
+            bold: true,
+            color: "#1F4E5E",
+          },
+          legend: {
+            position: "top",
+            alignment: "center",
+            textStyle: {
+              fontSize: 12,
+              bold: true,
+            },
+          },
+          colors: ["#D25F6B", "#3C7A8C"],
+          backgroundColor: "transparent",
+          chartArea: {
+            width: "70%",
+            height: "70%",
+            top: 60,
+            left: 60,
+          },
+          vAxis: {
+            title: "Nombre de personnes",
+            minValue: 0,
+            gridlines: {
+              color: "#ccd7e4",
+              count: 6,
+            },
+            textStyle: {
+              fontSize: 11,
+            },
+          },
+          hAxis: {
+            title: "Formation sanitaire",
+            slantedText: true,
+            slantedTextAngle: 25,
+            textStyle: {
+              fontSize: 11,
+              bold: false,
+            },
+          },
+          bar: {
+            groupWidth: "65%",
+          },
+          tooltip: {
+            isHtml: false,
+            trigger: "focus",
+            textStyle: {
+              fontSize: 12,
+            },
+          },
+          annotations: {
+            alwaysOutside: true,
+          },
+        };
+
+        const chart = new google.visualization.ColumnChart(
+          document.getElementById("barchart_div"),
+        );
+        chart.draw(data, options);
+
+        // Redimensionnement réactif
+        window.addEventListener("resize", () => {
+          chart.draw(data, options);
+        });
+      }
+
+      // Helper d'échappement HTML
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/[&<>]/g, function (m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+          })
+          .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function (c) {
+            return c;
+          });
+      }
+
+      // fonction principale de chargement et dessin
+      google.charts.setOnLoadCallback(() => {
+        // 1) Tracer les jauges améliorées (deux cadrans par formation)
+        drawEnhancedGauges();
+        // 2) Tracer le graphique en barres
+        drawBarChart();
+      });
+
+      // Optionnel : rendre les gauges réactives au redimensionnement des cartes ?
+      // En cas de redimensionnement, on pourrait redessiner, mais les dimensions fixes dans le gauge sont bien gérées.
+      window.addEventListener("resize", () => {
+        // Rafraîchir les jauges pour éviter tout problème d'échelle (pas obligatoire mais sécurise)
+        if (
+          google &&
+          google.visualization &&
+          document.getElementById("gaugesContainer")
+        ) {
+          drawEnhancedGauges();
+        }
+        // Le bar chart est déjà redessiné via l'event du chart lui-même, mais on appelle aussi drawBarChart pour cohérence
+        drawBarChart();
+      });
+    </script>
+  </body>
+</html>
