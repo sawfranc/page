@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Santé Dashboard - Indicateurs Formations Sanitaires</title>
+    <!-- Chart.js CDN pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- SheetJS (XLSX) pour lire le fichier Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 2rem 1.5rem;
+            color: #1a2c3e;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header & zone d'import */
+        .header {
+            background: rgba(255,255,255,0.65);
+            backdrop-filter: blur(4px);
+            border-radius: 2.5rem;
+            padding: 1.2rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1f5e3a, #2c8c5a);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+            display: inline-block;
+            margin-right: 2rem;
+        }
+
+        .upload-area {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .file-label {
+            background: #2c6e49;
+            color: white;
+            padding: 0.6rem 1.4rem;
+            border-radius: 60px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-label:hover {
+            background: #1f543a;
+            transform: scale(0.97);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .info-badge {
+            background: #eef2f7;
+            border-radius: 30px;
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+            color: #1e5a6f;
+        }
+
+        .selector-panel {
+            background: white;
+            border-radius: 2rem;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border: 1px solid #e2edf2;
+        }
+
+        .select-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .select-group label {
+            font-weight: 600;
+            color: #1e4663;
+            font-size: 1rem;
+        }
+
+        select {
+            padding: 0.7rem 2rem 0.7rem 1rem;
+            border-radius: 3rem;
+            border: 1px solid #cbdde6;
+            background: white;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232c6e49' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            appearance: none;
+        }
+
+        select:focus {
+            border-color: #2c8c5a;
+            box-shadow: 0 0 0 2px rgba(44,140,90,0.2);
+        }
+
+        .refresh-status {
+            font-size: 0.8rem;
+            color: #2d6a4f;
+            background: #e0f0e6;
+            padding: 0.3rem 1rem;
+            border-radius: 40px;
+        }
+
+        /* cartes cadrans + graphique */
+        .metrics-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-bottom: 2.5rem;
+            justify-content: center;
+        }
+
+        .gauge-card {
+            flex: 1;
+            min-width: 260px;
+            background: white;
+            border-radius: 2rem;
+            padding: 1.2rem 1rem 1.8rem;
+            text-align: center;
+            box-shadow: 0 20px 30px -12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            border: 1px solid #ffffffaa;
+            backdrop-filter: blur(2px);
+        }
+
+        .gauge-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .gauge-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f4d3e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .gauge-icon {
+            font-size: 1.5rem;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            margin: 0 auto;
+            width: 200px;
+            height: 200px;
+        }
+
+        canvas.gauge-canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .gauge-value {
+            margin-top: 0.8rem;
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: #1b4d3b;
+        }
+
+        .gauge-unit {
+            font-size: 0.9rem;
+            font-weight: normal;
+            color: #5f7f6e;
+        }
+
+        .chart-card {
+            flex: 1.2;
+            min-width: 320px;
+            background: white;
+            border-radius: 2rem;
+            padding: 1.2rem 1rem;
+            box-shadow: 0 20px 30px -12px rgba(0,0,0,0.1);
+            border: 1px solid #ffffffaa;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-left: 0.5rem;
+            color: #2c5a47;
+        }
+
+        .bar-container {
+            position: relative;
+            height: 280px;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: #4c6a5c;
+            background: #eef3efaa;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0.5rem 1.5rem;
+            border-radius: 60px;
+        }
+        button.download-dummy {
+            background: none;
+            border: none;
+            color: #2c8c5a;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+        @media (max-width: 780px) {
+            body { padding: 1rem; }
+            .gauge-card, .chart-card { min-width: 240px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="header">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <h1>📊 Indicateurs Santé Maternelle & Infantile</h1>
+            <div class="info-badge">📈 Taux accouchement / Couverture vaccinale BCG</div>
+        </div>
+        <div class="upload-area">
+            <label class="file-label" for="fileInput">
+                📂 Importer Excel (.xlsx, .xls)
+            </label>
+            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+            <div class="info-badge" id="fileStatus">Aucun fichier chargé. Utilisez le fichier exemple.</div>
+            <button id="loadSampleBtn" class="file-label" style="background:#3c7a5e;">📋 Charger données exemple</button>
+        </div>
+    </div>
+
+    <div class="selector-panel">
+        <div class="select-group">
+            <label>🏥 Formation sanitaire :</label>
+            <select id="facilitySelect" disabled>
+                <option value="">-- Sélectionner un établissement --</option>
+            </select>
+        </div>
+        <div class="refresh-status" id="selectedInfo">
+            Aucune donnée
+        </div>
+    </div>
+
+    <div class="metrics-grid">
+        <!-- Cadran Taux d'accouchement -->
+        <div class="gauge-card">
+            <div class="gauge-title">
+                <span class="gauge-icon">🤱</span> Accouchements
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="gaugeDelivery" width="200" height="200" class="gauge-canvas"></canvas>
+            </div>
+            <div class="gauge-value" id="deliveryValue">— <span class="gauge-unit">%</span></div>
+            <div style="font-size:0.75rem; color:#5d7a6b;">Taux d'accouchement institutionnel</div>
+        </div>
+
+        <!-- Cadran Couverture BCG -->
+        <div class="gauge-card">
+            <div class="gauge-title">
+                <span class="gauge-icon">💉</span> Vaccination BCG
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="gaugeBCG" width="200" height="200" class="gauge-canvas"></canvas>
+            </div>
+            <div class="gauge-value" id="bcgValue">— <span class="gauge-unit">%</span></div>
+            <div style="font-size:0.75rem; color:#5d7a6b;">Couverture vaccinale BCG</div>
+        </div>
+
+        <!-- Graphique à barres comparatif -->
+        <div class="chart-card">
+            <div class="chart-title">📊 Comparaison des indicateurs</div>
+            <div class="bar-container">
+                <canvas id="comparisonChart" width="400" height="250" style="max-height:250px; width:100%"></canvas>
+            </div>
+            <div style="font-size:0.7rem; text-align:center; margin-top:0.5rem;">Taux pour la formation sélectionnée</div>
+        </div>
+    </div>
+    <div class="footer-note">
+        ✨ Les cadrans réagissent dynamiquement au choix de la formation sanitaire.<br>
+        Données issues du fichier Excel (Colonne A: Formation, B: Taux accouchement, C: Taux BCG)
+    </div>
+</div>
+
+<script>
+    // Structure interne
+    let dataset = []; // contient { name, deliveryRate, bcgRate }
+    let deliveryGaugeChart = null;
+    let bcgGaugeChart = null;
+    let barChart = null;
+    let currentSelectedFacility = "";
+
+    // Références DOM
+    const facilitySelect = document.getElementById('facilitySelect');
+    const deliveryValueSpan = document.getElementById('deliveryValue');
+    const bcgValueSpan = document.getElementById('bcgValue');
+    const fileInput = document.getElementById('fileInput');
+    const fileStatus = document.getElementById('fileStatus');
+    const loadSampleBtn = document.getElementById('loadSampleBtn');
+    const selectedInfoSpan = document.getElementById('selectedInfo');
+
+    // Fonction pour initialiser les cadrans (Chart.js type doughnut avec texte central personnalisé)
+    function createGaugeChart(canvasId, initialPercent, colorSet) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        // Chart.js doughnut pour jauge demi-cercle ou classique? On fait un doughnut classique avec valeurs 0 à 100% représentée par une partie colorée.
+        // Pour un effet "cadran", on utilise un doughnut avec deux parties: valeur% et le reste (100 - valeur).
+        // On ajoute un plugin pour afficher le texte au centre.
+        // On détruire si existant
+        let existing = (canvasId === 'gaugeDelivery') ? deliveryGaugeChart : bcgGaugeChart;
+        if (existing) {
+            existing.destroy();
+        }
+        const percent = Math.min(100, Math.max(0, initialPercent));
+        const chartData = {
+            datasets: [{
+                data: [percent, 100 - percent],
+                backgroundColor: [colorSet.main, colorSet.bg],
+                borderWidth: 0,
+                circumference: 360,
+                rotation: -90,
+                cutout: '70%',
+                borderRadius: 8,
+                hoverOffset: 4
+            }]
+        };
+        const options = {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: { enabled: false },
+                legend: { display: false }
+            }
+        };
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: chartData,
+            options: options
+        });
+        // Ajout texte central via HTML/CSS superposé? Ici on va mettre à jour un span dédié pour la valeur précise.
+        // Mais pour l'aspect joli on peut également dessiner avec un plugin, mais la valeur textuelle est à l'extérieur.
+        // On va simplement afficher la valeur en grand sous le canvas -> déjà fait. 
+        // Cependant on peut améliorer en affichant le % au centre via custom canvas? Optionnel.
+        return chart;
+    }
+
+    function updateGauges(deliveryPercent, bcgPercent) {
+        if (deliveryGaugeChart) deliveryGaugeChart.destroy();
+        if (bcgGaugeChart) bcgGaugeChart.destroy();
+        deliveryGaugeChart = createGaugeChart('gaugeDelivery', deliveryPercent, { main: '#2c8c5a', bg: '#e2e9e6' });
+        bcgGaugeChart = createGaugeChart('gaugeBCG', bcgPercent, { main: '#3b82b6', bg: '#e0eaf1' });
+        // Mise à jour des valeurs textuelles
+        deliveryValueSpan.innerHTML = (deliveryPercent !== null && !isNaN(deliveryPercent)) ? deliveryPercent.toFixed(1) + '<span class="gauge-unit"> %</span>' : '— <span class="gauge-unit">%</span>';
+        bcgValueSpan.innerHTML = (bcgPercent !== null && !isNaN(bcgPercent)) ? bcgPercent.toFixed(1) + '<span class="gauge-unit"> %</span>' : '— <span class="gauge-unit">%</span>';
+    }
+
+    function updateBarChart(delivery, bcg, facilityName) {
+        if (barChart) barChart.destroy();
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        barChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Taux accouchement (%)', 'Couverture BCG (%)'],
+                datasets: [{
+                    label: facilityName || "Formation sanitaire",
+                    data: [delivery, bcg],
+                    backgroundColor: ['#2c8c5a', '#3b82b6'],
+                    borderRadius: 12,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 11 } } },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.raw}%` } }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Pourcentage (%)', font: { size: 10 } }, grid: { color: '#d4e0da' } },
+                    x: { ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    function refreshDashboardByFacility(facilityName) {
+        if (!dataset.length) {
+            // désactiver select ou afficher vide
+            facilitySelect.disabled = true;
+            selectedInfoSpan.innerText = "Aucune donnée importée";
+            updateGauges(null, null);
+            updateBarChart(0, 0, "Aucune donnée");
+            return;
+        }
+        facilitySelect.disabled = false;
+        const found = dataset.find(item => item.name === facilityName);
+        if (!found && dataset.length > 0) {
+            // Si l'item sélectionné n'existe plus (cas après import), prendre le premier
+            const first = dataset[0];
+            currentSelectedFacility = first.name;
+            facilitySelect.value = first.name;
+            updateDashboardByRecord(first);
+            selectedInfoSpan.innerText = `🟢 Formation : ${first.name}`;
+        } else if (found) {
+            updateDashboardByRecord(found);
+            selectedInfoSpan.innerText = `🟢 Formation : ${found.name}  |  Accouchement: ${found.deliveryRate}%  |  BCG: ${found.bcgRate}%`;
+        } else {
+            updateGauges(null, null);
+            updateBarChart(0, 0, "—");
+            selectedInfoSpan.innerText = "Sélectionnez une formation";
+        }
+    }
+
+    function updateDashboardByRecord(record) {
+        if (!record) return;
+        const deliveryVal = parseFloat(record.deliveryRate);
+        const bcgVal = parseFloat(record.bcgRate);
+        const validDelivery = isNaN(deliveryVal) ? 0 : Math.min(100, Math.max(0, deliveryVal));
+        const validBcg = isNaN(bcgVal) ? 0 : Math.min(100, Math.max(0, bcgVal));
+        updateGauges(validDelivery, validBcg);
+        updateBarChart(validDelivery, validBcg, record.name);
+    }
+
+    function populateSelect(optionsArray) {
+        facilitySelect.innerHTML = '';
+        if (!optionsArray.length) {
+            facilitySelect.innerHTML = '<option value="">-- Aucune donnée --</option>';
+            facilitySelect.disabled = true;
+            return;
+        }
+        facilitySelect.disabled = false;
+        optionsArray.forEach((opt, idx) => {
+            const option = document.createElement('option');
+            option.value = opt.name;
+            option.textContent = `${opt.name}  (Acc: ${opt.deliveryRate}% / BCG: ${opt.bcgRate}%)`;
+            facilitySelect.appendChild(option);
+        });
+        if (optionsArray.length > 0 && !currentSelectedFacility) {
+            facilitySelect.value = optionsArray[0].name;
+            currentSelectedFacility = optionsArray[0].name;
+            refreshDashboardByFacility(currentSelectedFacility);
+        } else if (currentSelectedFacility && optionsArray.some(f => f.name === currentSelectedFacility)) {
+            facilitySelect.value = currentSelectedFacility;
+            refreshDashboardByFacility(currentSelectedFacility);
+        } else if (optionsArray.length > 0) {
+            facilitySelect.value = optionsArray[0].name;
+            currentSelectedFacility = optionsArray[0].name;
+            refreshDashboardByFacility(currentSelectedFacility);
+        } else {
+            refreshDashboardByFacility(null);
+        }
+    }
+
+    // Charger données depuis un tableau (workbook)
+    function loadFromSheetData(worksheet) {
+        // Convertir sheet en JSON, première ligne comme entêtes
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+        if (!rows || rows.length < 2) {
+            fileStatus.innerText = "⚠️ Fichier vide ou format invalide";
+            return false;
+        }
+        // On attend les colonnes: [Nom formation, Taux accouchement, Taux BCG]
+        // Parcours des lignes à partir de la première ligne significative (la première pourrait être entête)
+        let dataRows = [];
+        // Essayer de détecter si première ligne contient des mots-clés, on la saute
+        let startRow = 0;
+        if (rows.length > 0 && rows[0][0] && typeof rows[0][0] === 'string' && (rows[0][0].toLowerCase().includes('formation') || rows[0][0].toLowerCase().includes('nom'))) {
+            startRow = 1;
+        }
+        for (let i = startRow; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length < 2) continue;
+            let name = row[0] ? String(row[0]).trim() : "";
+            if (name === "" || name === "null" || name === "undefined") continue;
+            let deliveryRaw = row[1];
+            let bcgRaw = row[2];
+            let delivery = parseFloat(String(deliveryRaw).replace(',', '.').replace(/%/g, ''));
+            let bcg = parseFloat(String(bcgRaw).replace(',', '.').replace(/%/g, ''));
+            if (isNaN(delivery)) delivery = 0;
+            if (isNaN(bcg)) bcg = 0;
+            delivery = Math.min(100, Math.max(0, delivery));
+            bcg = Math.min(100, Math.max(0, bcg));
+            dataRows.push({ name: name, deliveryRate: delivery, bcgRate: bcg });
+        }
+        if (dataRows.length === 0) {
+            fileStatus.innerText = "❌ Aucune donnée valide trouvée (vérifiez colonnes A,B,C)";
+            return false;
+        }
+        dataset = dataRows;
+        currentSelectedFacility = dataset[0].name;
+        populateSelect(dataset);
+        refreshDashboardByFacility(currentSelectedFacility);
+        fileStatus.innerText = `✅ Chargé : ${dataset.length} formations sanitaires`;
+        return true;
+    }
+
+    // Gestion fichier Excel
+    function handleExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            loadFromSheetData(firstSheet);
+        };
+        reader.onerror = function() {
+            fileStatus.innerText = "Erreur lecture fichier";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleExcelFile(e.target.files[0]);
+        }
+    });
+
+    // Données exemple intégrées (avec valeurs typiques de formations sanitaires)
+    function loadSampleDataset() {
+        dataset = [
+            { name: "Centre de santé Aïnou", deliveryRate: 78.4, bcgRate: 92.3 },
+            { name: "Hôpital Régional de Bélier", deliveryRate: 65.2, bcgRate: 85.7 },
+            { name: "Maternité Notre Dame", deliveryRate: 88.9, bcgRate: 97.5 },
+            { name: "CSPS Kossyam", deliveryRate: 55.0, bcgRate: 74.2 },
+            { name: "Clinique Espoir", deliveryRate: 91.2, bcgRate: 96.0 },
+            { name: "District Sanitaire Ziniaré", deliveryRate: 69.5, bcgRate: 81.3 }
+        ];
+        currentSelectedFacility = dataset[0].name;
+        populateSelect(dataset);
+        refreshDashboardByFacility(currentSelectedFacility);
+        fileStatus.innerText = `📋 Données exemple (${dataset.length} formations) - Prêt`;
+    }
+
+    loadSampleBtn.addEventListener('click', () => {
+        loadSampleDataset();
+        fileInput.value = ''; // reset
+    });
+
+    facilitySelect.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        if (selected) {
+            currentSelectedFacility = selected;
+            refreshDashboardByFacility(currentSelectedFacility);
+        }
+    });
+
+    // Au chargement initial, charger jeu de données exemple par défaut
+    loadSampleDataset();
+</script>
+</body>
+</html>
